@@ -1,6 +1,6 @@
 <script>
 import { routerKey, RouterLink } from 'vue-router';
-import { getTrips } from '../localstorage';
+import { getTrips, saveTrips  } from '../localstorage';
 import AppHeader from '../components/AppHeader.vue';
 
 export default {
@@ -8,7 +8,11 @@ export default {
         return {
             trip: null,
             mapUrl: '',
-            isModalOpen: false
+            isModalOpen: false,
+            newStop: {
+                name: '',
+                date: ''
+            }
         };
     },
     components: AppHeader,
@@ -27,6 +31,25 @@ export default {
     methods: {
         toggleModal() {
             this.isModalOpen = !this.isModalOpen;
+        },
+        addStop() {
+            if (!this.newStop.name || !this.newStop.date) return;
+
+            // Aggiungi la nuova tappa al viaggio
+            this.trip.stops = this.trip.stops || [];
+            this.trip.stops.push({
+                name: this.newStop.name,
+                date: this.newStop.date
+            });
+
+            // Salva i viaggi aggiornati
+            const trips = getTrips();
+            trips[this.$route.params.id] = this.trip;
+            saveTrips(trips);
+
+            // Resetta il modulo e chiudi la modale
+            this.newStop = { name: '', date: '' };
+            this.toggleModal();
         }
     }
 }
@@ -51,8 +74,36 @@ export default {
         </div>
         <div v-if="isModalOpen" class="modal-overlay" @click="toggleModal">
             <div class="modal-content" @click.stop>
-                <h2>Modal Title</h2>
-                <p>Here is some content for the modal.</p>
+                <h2>Add New Stop</h2>
+                <form @submit.prevent="addStop">
+                    <div class="form-group">
+                        <label for="stopName">Stop Name:</label>
+                        <input
+                            type="text"
+                            id="stopName"
+                            v-model="newStop.name"
+                            required
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label for="stopDate">Date:</label>
+                        <input
+                            type="date"
+                            id="stopDate"
+                            v-model="newStop.date"
+                            required
+                        />
+                    </div>
+                    <button type="submit">Add Stop</button>
+                </form>
+                <div v-if="trip.stops && trip.stops.length" class="stops-list">
+                    <h3>Existing Stops:</h3>
+                    <ul>
+                        <li v-for="(stop, index) in trip.stops" :key="index">
+                            <strong>{{ stop.name }}</strong> - {{ stop.date }}
+                        </li>
+                    </ul>
+                </div>
                 <button @click="toggleModal">Close Modal</button>
             </div>
         </div>
@@ -114,5 +165,33 @@ iframe {
     max-width: 250px; /* Larghezza massima della modale */
 }
 
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+input[type="text"], input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
 </style>
 
