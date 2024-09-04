@@ -13,7 +13,9 @@ export default {
     },
     methods: {
         loadTrips() {
-            this.trips = getTrips(); // Recupera i viaggi dal localStorage
+            const trips = getTrips();
+            console.log('Loaded trips:', trips); // Aggiungi questo per debug
+            this.trips = trips;
         },
         updateTrips(newTrip) {
             this.trips.push(newTrip); // Aggiunge il nuovo viaggio alla lista
