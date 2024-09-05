@@ -1,6 +1,5 @@
 <script>
-import { routerKey, RouterLink } from 'vue-router';
-import { getTrips, saveTrips  } from '../localstorage';
+import { getTrips, saveTrips } from '../localstorage';
 import AppHeader from '../components/AppHeader.vue';
 
 export default {
@@ -15,18 +14,14 @@ export default {
             }
         };
     },
-    components: AppHeader,
+    components: { AppHeader },
     created() {
         const tripId = this.$route.params.id;
         const trips = getTrips();
         this.trip = trips[tripId]; // Trova il viaggio usando l'ID
 
-       // Costruisci l'URL per l'iframe della mappa
-       if (this.trip && this.trip.startDestination) {
-        this.mapUrl = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDTGRmjaJ2EXbTfRqS8kd3MuVP23kqH4gE&origin=${encodeURIComponent(this.trip.startDestination)}&destination=${encodeURIComponent(this.trip.endDestination)}`;
-        } else {
-            console.error("Invalid trip data");
-        }
+        // Aggiorna la mappa all'inizio
+        this.updateMapUrl();
     },
     methods: {
         toggleModal() {
@@ -47,9 +42,40 @@ export default {
             trips[this.$route.params.id] = this.trip;
             saveTrips(trips);
 
+            // Aggiorna l'URL della mappa
+            this.updateMapUrl();
+
             // Resetta il modulo e chiudi la modale
             this.newStop = { name: '', date: '' };
             this.toggleModal();
+        },
+        removeStop(index) {
+            // Rimuovi la tappa dall'array
+            this.trip.stops.splice(index, 1);
+
+            // Salva i viaggi aggiornati
+            const trips = getTrips();
+            trips[this.$route.params.id] = this.trip;
+            saveTrips(trips);
+
+            // Aggiorna l'URL della mappa
+            this.updateMapUrl();
+        },
+        updateMapUrl() {
+            // Base URL per Google Maps Directions
+            const baseUrl = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDTGRmjaJ2EXbTfRqS8kd3MuVP23kqH4gE`;
+            
+            // Aggiungi origine e destinazione
+            let url = `${baseUrl}&origin=${encodeURIComponent(this.trip.startDestination)}&destination=${encodeURIComponent(this.trip.endDestination)}`;
+            
+            // Se ci sono tappe, aggiungile come waypoints
+            if (this.trip.stops && this.trip.stops.length > 0) {
+                const waypoints = this.trip.stops.map(stop => stop.name).join('|');
+                url += `&waypoints=${encodeURIComponent(waypoints)}`;
+            }
+
+            // Aggiorna l'URL della mappa
+            this.mapUrl = url;
         }
     }
 }
@@ -101,6 +127,7 @@ export default {
                     <ul>
                         <li v-for="(stop, index) in trip.stops" :key="index">
                             <strong>{{ stop.name }}</strong> - {{ stop.date }}
+                            <button @click="removeStop(index)">X</button>
                         </li>
                     </ul>
                 </div>
