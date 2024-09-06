@@ -1,6 +1,5 @@
 <script>
 import { getTrips, saveTrips } from '../localstorage';
-import AppHeader from '../components/AppHeader.vue';
 
 export default {
     data() {
@@ -8,13 +7,17 @@ export default {
             trip: null,
             mapUrl: '',
             isModalOpen: false,
+            isStopDetailModalOpen: false,
             newStop: {
                 name: '',
-                date: ''
-            }
+                date: '',
+                notes: '',
+                type: '',
+                rating: 0,
+            },
+            selectedStop: null
         };
     },
-    components: { AppHeader },
     created() {
         const tripId = this.$route.params.id;
         const trips = getTrips();
@@ -27,6 +30,10 @@ export default {
         toggleModal() {
             this.isModalOpen = !this.isModalOpen;
         },
+        toggleStopDetailModal(stop) {
+        this.selectedStop = stop;
+        this.isStopDetailModalOpen = !this.isStopDetailModalOpen;
+        },
         addStop() {
             if (!this.newStop.name || !this.newStop.date) return;
 
@@ -34,7 +41,10 @@ export default {
             this.trip.stops = this.trip.stops || [];
             this.trip.stops.push({
                 name: this.newStop.name,
-                date: this.newStop.date
+                date: this.newStop.date,
+                notes: this.newStop.notes,
+                type: this.newStop.type,
+                rating: this.newStop.rating
             });
 
             // Salva i viaggi aggiornati
@@ -46,7 +56,7 @@ export default {
             this.updateMapUrl();
 
             // Resetta il modulo e chiudi la modale
-            this.newStop = { name: '', date: '' };
+            this.newStop = { name: '', date: '', notes:'', type: '', rating: 0 };
             this.toggleModal();
         },
         removeStop(index) {
@@ -76,7 +86,15 @@ export default {
 
             // Aggiorna l'URL della mappa
             this.mapUrl = url;
-        }
+        },
+        saveStopDetails() {
+        const trips = getTrips();
+        const tripId = this.$route.params.id;
+
+        // Salva le modifiche al viaggio attuale
+        trips[tripId] = this.trip;
+        saveTrips(trips);
+    }
     }
 }
 </script>
@@ -98,6 +116,7 @@ export default {
                 referrerpolicy="no-referrer-when-downgrade">
             </iframe>
         </div>
+        <!-- Modale per aggiungere una tappa -->
         <div v-if="isModalOpen" class="modal-overlay" @click="toggleModal">
             <div class="modal-content" @click.stop>
                 <h2>Add New Stop</h2>
@@ -120,22 +139,74 @@ export default {
                             required
                         />
                     </div>
+                    <div class="form-group">
+                        <label for="stopNotes">Notes:</label>
+                        <textarea
+                            id="stopNotes"
+                            v-model="newStop.notes"
+                        ></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="stopType">Type:</label>
+                        <select v-model="newStop.type">
+                            <option value="">Select Type</option>
+                            <option value="sightseeing">Sightseeing</option>
+                            <option value="restaurant">Restaurant</option>
+                            <option value="hotel">Hotel</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="stopRating">Rating:</label>
+                        <input
+                            type="number"
+                            id="stopRating"
+                            v-model.number="newStop.rating"
+                            min="0"
+                            max="5"
+                        />
+                    </div>
                     <button type="submit">Add Stop</button>
                 </form>
+                <h3>Existing Stops:</h3>
                 <div v-if="trip.stops && trip.stops.length" class="stops-list">
-                    <h3>Existing Stops:</h3>
+                    
                     <ul>
                         <li v-for="(stop, index) in trip.stops" :key="index">
                             <strong>{{ stop.name }}</strong> - {{ stop.date }}
+                            <button @click="toggleStopDetailModal(stop)">Details</button>
                             <button @click="removeStop(index)">X</button>
                         </li>
                     </ul>
                 </div>
-                <button @click="toggleModal">Close Modal</button>
+                <button @click="toggleModal" class="mt-3">Close Modal</button>
+            </div>
+        </div>
+        <!-- Modale per dettagli della tappa -->
+        <div v-if="isStopDetailModalOpen" class="modal-overlay2" @click="toggleStopDetailModal(null)">
+            <div class="modal-content2" @click.stop>
+                <h2>Stop Details</h2>
+                <div v-if="selectedStop">
+                    <p><strong>Name:</strong> {{ selectedStop.name }}</p>
+                    <p><strong>Date:</strong> {{ selectedStop.date }}</p>
+                    <p><strong>Notes:</strong> {{ selectedStop.notes }}</p>
+                    <p><strong>Type:</strong> {{ selectedStop.type }}</p>
+                    <div class="d-flex align-items-center">
+                        <p><strong>Rating:</strong> {{ selectedStop.rating }}</p>
+                        <input type="number" v-model.number="selectedStop.rating" min="0" max="5" class="mb-3 ms-2"/>
+                        <button class="btn btn-sm mb-3 ms-2" @click="saveStopDetails">Save</button>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-center">
+                    <button @click="toggleStopDetailModal(null)">Close Details</button>
+                </div>
+                
             </div>
         </div>
     </div>
 </template>
+
+
 
 
 <style scoped>
@@ -219,6 +290,29 @@ button {
 
 button:hover {
     background-color: #0056b3;
+}
+
+.modal-overlay2 {
+    position: fixed;
+    bottom: 0;
+    right: 300px;
+    width: 300px; /* Larghezza della modale */
+    height: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: 5px solid white;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-content2 {
+    max-width: 400px; /* Può essere più largo rispetto alla modale di aggiunta */
+}
+.stops-list {
+    max-height: 200px; /* Altezza massima, regolabile secondo le tue esigenze */
+    overflow-y: auto; /* Aggiunge una barra di scorrimento verticale se il contenuto supera l'altezza */
 }
 </style>
 
